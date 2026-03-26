@@ -1,0 +1,6 @@
+userId,username,mood,stressLevel,sleepHours,screenTime
+U001,Chanchal,Happy,2,7.5,120
+U002,Rahul,Sad,7,5.0,180
+U003,Priya,Anxious,8,4.5,200
+U004,Amit,Calm,3,8.0,90
+U005,Neha,Stressed,9,3.5,220

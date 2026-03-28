@@ -1,10 +1,10 @@
 const axios = require("axios");
 const User = require("../models/UserModel");
+const makeCall = require("../utils/twilioService"); // ✅ ADD
 
 const addDailyData = async (req, res) => {
     try {
-        //const userId = req.user.id;
-        const userId = req.user.userId; // ✅ from auth middleware
+        const userId = req.user.userId;
 
         const {
             mood,
@@ -28,18 +28,45 @@ const addDailyData = async (req, res) => {
         const mlRes = await axios.post(
             "https://ai-stress-service.onrender.com/predict-stress",
             {
-                avg_sleep: sleepHours,                 // ✅ number
-                screen_time: screenTime,               // ✅ number
-                activity: String(stepCount),           // 🔥 MUST BE STRING
-                aqi: aqi,                              // ✅ number
-                mood: mood                             // ✅ string
+                sleepHours: sleepHours,
+                screenTime: screenTime,
+                stepCount: stepCount,
+                aqi: aqi,
+                mood: mood
             }
         );
 
         const { stress_score, risk_level } = mlRes.data;
 
+        console.log("🧠 ML OUTPUT:", stress_score, risk_level);
+
         // =========================
-        // 💾 SAVE DATA (MATCH YOUR SCHEMA)
+        // 🔥 NORMALIZE RISK LEVEL
+        // =========================
+        let normalizedRisk = (risk_level || "").toLowerCase();
+
+        // 🔥 FIX: handle ML "critical"
+        if (normalizedRisk === "critical") {
+            normalizedRisk = "high";
+        }
+
+        // =========================
+        // 🚨 TRIGGER CALL
+        // =========================
+        if (stress_score >= 9 || normalizedRisk === "high") {
+            console.log("🚨 HIGH STRESS DETECTED");
+
+            await makeCall({
+                userId,
+                username: user.username,
+                stressLevel: stress_score
+            });
+
+            console.log("📞 CALL TRIGGERED");
+        }
+
+        // =========================
+        // 💾 SAVE DATA
         // =========================
         user.sleep.push({
             avg_sleep: sleepHours
@@ -60,8 +87,7 @@ const addDailyData = async (req, res) => {
 
         user.stress.push({
             stress_score: stress_score,
-            //risk_level: risk_level
-            risk_level: risk_level.toLowerCase()
+            risk_level: normalizedRisk // ✅ FIXED
         });
 
         await user.save();
@@ -71,13 +97,6 @@ const addDailyData = async (req, res) => {
         // =========================
         res.json({
             message: "Daily data + ML stored ✅",
-            input: {
-                avg_sleep: sleepHours,
-                screen_time: screenTime,
-                activity: stepCount,
-                aqi,
-                mood
-            },
             output: {
                 stress_score,
                 risk_level
@@ -85,7 +104,7 @@ const addDailyData = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("Tracker Error:", err.response?.data || err.message);
+        console.error("❌ Tracker Error:", err.response?.data || err.message);
 
         res.status(500).json({
             error: err.response?.data || err.message

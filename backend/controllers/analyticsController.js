@@ -20,10 +20,10 @@ const getAnalytics = async (req, res) => {
         // 📊 SCORE FUNCTION
         // =========================
         const calculateScore = (i) => {
-            const s = sleep[i]?.hours || 0;
-            const steps = activity[i]?.steps || 0;
-            const scr = screen[i]?.hours || 0;
-            const str = stress[i]?.value || 0;
+            const s = sleep[i]?.avg_sleep || 0;
+            const steps = activity[i]?.stepCount || 0;
+            const scr = screen[i]?.screenTime || 0;
+            const str = stress[i]?.stress_score || 0;
 
             let score = 0;
             score += Math.min(s * 10, 30);
@@ -68,7 +68,7 @@ const getAnalytics = async (req, res) => {
         // =========================
         const moodMap = {};
         moods.forEach(m => {
-            const mood = m.value;
+            const mood = m.emotion?.primary || "neutral";
             moodMap[mood] = (moodMap[mood] || 0) + 1;
         });
 
@@ -81,8 +81,8 @@ const getAnalytics = async (req, res) => {
         // 📉 SCREEN VS STRESS
         // =========================
         const screenVsStress = screen.map((s, i) => ({
-            screenTime: s.hours || 0,
-            stress: stress[i]?.value || 0
+            screenTime: s.screenTime || 0,
+            stress: stress[i]?.stress_score || 0
         }));
 
         // =========================
@@ -96,7 +96,7 @@ const getAnalytics = async (req, res) => {
         };
 
         sleep.forEach(s => {
-            const h = s.hours || 0;
+            const h = s.avg_sleep || 0;
 
             if (h < 6) sleepDist.poor++;
             else if (h < 7) sleepDist.fair++;

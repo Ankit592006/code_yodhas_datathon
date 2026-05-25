@@ -16,29 +16,58 @@ const getProfile = async (req, res) => {
         let currentStreak = 0;
 
         if (user.moods && user.moods.length > 0) {
-            const sorted = [...user.moods].sort(
-                (a, b) => new Date(b.date) - new Date(a.date)
-            );
+            // Convert to YYYY-MM-DD local calendar strings
+            const dates = user.moods.map(m => {
+                const d = new Date(m.date);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            });
 
-            let prevDate = new Date(sorted[0].date);
+            // Remove duplicates and sort descending (most recent first)
+            const uniqueDates = [...new Set(dates)].sort((a, b) => new Date(b) - new Date(a));
 
-            for (let i = 0; i < sorted.length; i++) {
-                const currDate = new Date(sorted[i].date);
+            if (uniqueDates.length > 0) {
+                const formatDate = (d) => {
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                };
+                const todayStr = formatDate(new Date());
+                
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = formatDate(yesterday);
 
-                const diff =
-                    (prevDate - currDate) / (1000 * 60 * 60 * 24);
+                const mostRecentDateStr = uniqueDates[0];
 
-                if (i === 0 || diff <= 1) {
-                    currentStreak++;
-                    prevDate = currDate;
-                } else break;
+                // Only calculate streak if the user checked in today or yesterday
+                if (mostRecentDateStr === todayStr || mostRecentDateStr === yesterdayStr) {
+                    currentStreak = 1;
+                    let current = new Date(mostRecentDateStr);
+
+                    for (let i = 1; i < uniqueDates.length; i++) {
+                        const prev = new Date(uniqueDates[i]);
+                        const diffTime = Math.abs(current - prev);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays === 1) {
+                            currentStreak++;
+                            current = prev;
+                        } else if (diffDays > 1) {
+                            break;
+                        }
+                    }
+                }
             }
         }
 
         // 🔥 score
-        const latestSleep = user.sleep.at(-1)?.hours || 0;
-        const latestStress = user.stress.at(-1)?.value || 0;
-        const latestMood = user.moods.at(-1)?.value || "neutral";
+        const latestSleep = user.sleep.at(-1)?.avg_sleep || 0;
+        const latestStress = user.stress.at(-1)?.stress_score || 0;
+        const latestMood = user.moods.at(-1)?.emotion?.primary || "neutral";
 
         let score = 50;
         if (latestSleep >= 7) score += 15;
@@ -67,6 +96,7 @@ const getProfile = async (req, res) => {
             username: user.email,
             initials,
             memberSince,
+            emergencyContact: user.emergencyContact || "",
             stats: {
                 totalCheckins,
                 currentStreak,
@@ -80,4 +110,26 @@ const getProfile = async (req, res) => {
     }
 };
 
-module.exports = { getProfile };
+const updateEmergencyContact = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { emergencyContact } = req.body;
+
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { emergencyContact },
+            { new: true }
+        );
+
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        res.json({
+            message: "Emergency contact updated successfully",
+            emergencyContact: user.emergencyContact
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+module.exports = { getProfile, updateEmergencyContact };

@@ -121,7 +121,7 @@ const calculateRisk = require("../utils/riskCalculator");
 // =====================================
 router.post("/data", authMiddleware, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user.userId;
         const jsonData = req.body;
 
         const {
@@ -152,7 +152,7 @@ router.post("/data", authMiddleware, async (req, res) => {
         if (sleepHours) {
             sleepDoc = await Sleep.create({
                 user: userId,
-                sleepHours
+                avg_sleep: sleepHours
             });
         }
 
@@ -201,7 +201,7 @@ router.post("/data", authMiddleware, async (req, res) => {
 
         if (sleepDoc) {
             updateFields.$push.sleep = {
-                sleepHours,
+                avg_sleep: sleepHours,
                 refId: sleepDoc._id
             };
         }

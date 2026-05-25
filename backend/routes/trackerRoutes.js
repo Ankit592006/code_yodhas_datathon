@@ -6,5 +6,6 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 // ✅ CLEAN ROUTE
 router.post("/daily", authMiddleware, addDailyData);
+router.post("/", authMiddleware, addDailyData);
 
 module.exports = router;

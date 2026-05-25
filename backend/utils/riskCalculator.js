@@ -1,11 +1,12 @@
 const calculateRisk = (data) => {
     const { stressLevel, sleepHours, mood } = data;
+    const normalizedMood = mood ? mood.toLowerCase() : "";
 
     if (
         stressLevel >= 8 ||
         sleepHours < 4 ||
-        mood === "Stressed" ||
-        mood === "Anxious"
+        normalizedMood === "stressed" ||
+        normalizedMood === "anxious"
     ) {
         return "HIGH";
     }

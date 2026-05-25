@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 // ==============================
 const registerUser = async (req, res) => {
     try {
+        console.log("DB readyState:", require("mongoose").connection.readyState);
         const { name, email, password } = req.body;
 
         // check if exists
@@ -62,7 +63,8 @@ const loginUser = async (req, res) => {
         res.json({
             msg: "Login success",
             token,
-            userId: user._id
+            userId: user._id,
+            username: user.username
         });
 
     } catch (err) {
